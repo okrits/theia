@@ -14,4 +14,21 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-export * from './server-process';
+import { checkParentAlive } from './messaging/ipc-protocol';
+
+checkParentAlive();
+
+process.on('unhandledRejection', (reason, promise) => {
+    throw reason;
+});
+
+export interface Address {
+    port: number;
+    address: string;
+}
+
+export async function start(serverPath: string): Promise<Address> {
+    const server = await require(serverPath)();
+    return server.address();
+}
+export default start;
