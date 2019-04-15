@@ -32,26 +32,37 @@ export class HostedPluginDeployerHandler implements PluginDeployerHandler {
     /**
      * Managed plugin metadata backend entries.
      */
-    private readonly currentBackendPluginsMetadata: PluginMetadata[] = [];
+    private currentBackendPluginsMetadata: PluginMetadata[] | undefined;
 
     /**
      * Managed plugin metadata frontend entries.
      */
-    private readonly currentFrontendPluginsMetadata: PluginMetadata[] = [];
+    private currentFrontendPluginsMetadata: PluginMetadata[] | undefined;
 
-    private readonly backendPluginsMetadataDeferred = new Deferred<PluginMetadata[]>();
+    private backendPluginsMetadataDeferred: Deferred<PluginMetadata[]> | undefined;
 
-    private readonly frontendPluginsMetadataDeferred = new Deferred<PluginMetadata[]>();
+    private frontendPluginsMetadataDeferred: Deferred<PluginMetadata[]> | undefined;
 
     getDeployedFrontendMetadata(): Promise<PluginMetadata[]> {
-        return this.frontendPluginsMetadataDeferred.promise;
+        if (!this.currentFrontendPluginsMetadata) {
+            this.frontendPluginsMetadataDeferred = new Deferred<PluginMetadata[]>();
+            return this.frontendPluginsMetadataDeferred.promise;
+        }
+        return Promise.resolve(this.currentFrontendPluginsMetadata);
     }
 
     getDeployedBackendMetadata(): Promise<PluginMetadata[]> {
-        return this.backendPluginsMetadataDeferred.promise;
+        if (!this.currentBackendPluginsMetadata) {
+            this.backendPluginsMetadataDeferred = new Deferred<PluginMetadata[]>();
+            return this.backendPluginsMetadataDeferred.promise;
+        }
+        return Promise.resolve(this.currentBackendPluginsMetadata);
     }
 
     async deployFrontendPlugins(frontendPlugins: PluginDeployerEntry[]): Promise<void> {
+        if (!this.currentFrontendPluginsMetadata) {
+            this.currentFrontendPluginsMetadata = [];
+        }
         for (const plugin of frontendPlugins) {
             const metadata = await this.reader.getPluginMetadata(plugin.path());
             if (metadata) {
@@ -64,10 +75,16 @@ export class HostedPluginDeployerHandler implements PluginDeployerHandler {
             }
         }
 
-        this.frontendPluginsMetadataDeferred.resolve(this.currentFrontendPluginsMetadata);
+        if (this.frontendPluginsMetadataDeferred) {
+            this.frontendPluginsMetadataDeferred.resolve(this.currentFrontendPluginsMetadata);
+            this.frontendPluginsMetadataDeferred = undefined;
+        }
     }
 
     async deployBackendPlugins(backendPlugins: PluginDeployerEntry[]): Promise<void> {
+        if (!this.currentBackendPluginsMetadata) {
+            this.currentBackendPluginsMetadata = [];
+        }
         for (const plugin of backendPlugins) {
             const metadata = await this.reader.getPluginMetadata(plugin.path());
             if (metadata) {
@@ -80,7 +97,10 @@ export class HostedPluginDeployerHandler implements PluginDeployerHandler {
             }
         }
 
-        this.backendPluginsMetadataDeferred.resolve(this.currentBackendPluginsMetadata);
+        if (this.backendPluginsMetadataDeferred) {
+            this.backendPluginsMetadataDeferred.resolve(this.currentBackendPluginsMetadata);
+            this.backendPluginsMetadataDeferred = undefined;
+        }
     }
 
 }
